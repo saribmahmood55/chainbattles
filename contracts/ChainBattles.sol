@@ -13,7 +13,14 @@ contract ChainBattles is ERC721URIStorage {
 
     Counters.Counter private _tokenIds;
 
-    mapping(uint256 => uint256) public tokenIdToLevels;
+    struct CharacterAttributes {
+        uint256 levels;
+        uint256 hp;
+        uint256 strength;
+        uint256 speed;
+    }
+
+    mapping(uint256 => CharacterAttributes) public tokenIdToAttributes;
 
     constructor() ERC721("Chain Battles", "CB") {
 
@@ -21,12 +28,16 @@ contract ChainBattles is ERC721URIStorage {
 
     function generateCharacter(uint256 tokenId) public returns(string memory){
 
+        CharacterAttributes memory _attributes = getAttributes(tokenId);
         bytes memory svg = abi.encodePacked(
             '<svg xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMinYMin meet" viewBox="0 0 350 350">',
             '<style>.base { fill: white; font-family: serif; font-size: 14px; }</style>',
             '<rect width="100%" height="100%" fill="black" />',
-            '<text x="50%" y="40%" class="base" dominant-baseline="middle" text-anchor="middle">',"Warrior",'</text>',
-            '<text x="50%" y="50%" class="base" dominant-baseline="middle" text-anchor="middle">', "Levels: ",getLevels(tokenId),'</text>',
+            '<text x="50%" y="30%" class="base" dominant-baseline="middle" text-anchor="middle">',"Warrior",'</text>',
+            '<text x="50%" y="40%" class="base" dominant-baseline="middle" text-anchor="middle">', "Levels: ",_attributes.levels.toString(),'</text>',
+            '<text x="50%" y="50%" class="base" dominant-baseline="middle" text-anchor="middle">', "HP: ",_attributes.hp.toString(),'</text>',
+            '<text x="50%" y="60%" class="base" dominant-baseline="middle" text-anchor="middle">', "Strength: ",_attributes.strength.toString(),'</text>',
+            '<text x="50%" y="70%" class="base" dominant-baseline="middle" text-anchor="middle">', "Speed: ",_attributes.speed.toString(),'</text>',
             '</svg>'
         );
         return string(
@@ -37,9 +48,8 @@ contract ChainBattles is ERC721URIStorage {
         );
     }
 
-    function getLevels(uint256 tokenId) public view returns(string memory) {
-        uint256 levels = tokenIdToLevels[tokenId];
-        return levels.toString();
+    function getAttributes(uint256 tokenId) public view returns(CharacterAttributes memory) {
+        return tokenIdToAttributes[tokenId];
     }
 
     function getTokenURI(uint256 tokenId) public returns(string memory){
@@ -57,15 +67,23 @@ contract ChainBattles is ERC721URIStorage {
         _tokenIds.increment();
         uint256 newItemId = _tokenIds.current();
         _safeMint(msg.sender, newItemId);
-        tokenIdToLevels[newItemId] = 0;
+        tokenIdToAttributes[newItemId] = CharacterAttributes(0,0,0,0);
         _setTokenURI(newItemId, getTokenURI(newItemId));
     }
 
     function train(uint256 tokenId) public {
         require(_exists(tokenId), "Please use existing token ID");
         require(ownerOf(tokenId) == msg.sender, "Please train your own warrior");
-        uint256 level = tokenIdToLevels[tokenId] + 1;
-        tokenIdToLevels[tokenId] = level;
+        CharacterAttributes memory _attributes = tokenIdToAttributes[tokenId];
+        _attributes.levels = _attributes.levels + generateRandom(1);
+        _attributes.hp = _attributes.hp + generateRandom(2);
+        _attributes.strength = _attributes.strength + generateRandom(3);
+        _attributes.speed = _attributes.speed + generateRandom(4);
+        tokenIdToAttributes[tokenId] = _attributes;
         _setTokenURI(tokenId, getTokenURI(tokenId));
+    }
+
+    function generateRandom(uint256 _pos) private returns (uint256) {
+        return uint256(keccak256(abi.encodePacked(block.difficulty, block.timestamp, _pos))) % 10;
     }
 }
